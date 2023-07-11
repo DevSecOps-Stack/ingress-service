@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: django-webapp
+  template:
+    metadata:
+      labels:
+        app: django-webapp
+    spec:
+      containers:
+      - name: django-webapp
+        image: rakesha/dockerdjango:58
+        ports: 
+        - name: http-port
+          containerPort: 8000 
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: django-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: django-webapp
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aspcoremvc-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aspcoremvc-webapp
+  template:
+    metadata:
+      labels:
+        app: aspcoremvc-webapp
+    spec: 
+      containers:
+      - name: aspcoremvc-webapp
+        image: rakesha/asp-netcore-mvc-api-main-mvc:v2
+        ports:
+        - name: http-port
+          containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aspcoremvc-service
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: aspcoremvc-webapp
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  defaultBackend: 
+    service:
+      name: django-service
+      port:
+        number: 80
+  rules:
+    - http:
+        paths:
+          - path: "/aspcore"
+            pathType: Prefix
+            backend:
+              service:
+                name: aspcoremvc-service
+                port:
+                  number: 80
+          - path: "/"
+            pathType: Prefix
+            backend:
+              service:
+                name: django-service
+                port:
+                  number: 80
+
+
+
+
